@@ -1,0 +1,48 @@
+- hosts: localhost
+  connection: local
+  gather_facts: no
+  sudo: no
+  vars:
+    homebrew_packages:
+      - { name: readline }
+      - { name: openssl }
+      - { name: openssl, state: linked, install_options: force }
+      - { name: python }
+      - { name: ansible }
+      - { name: git }
+      - { name: zsh }
+      - { name: ctags }
+      - { name: direnv }
+      - { name: fontconfig }
+      - { name: freetype }
+      - { name: nkf }
+      - { name: nodebrew }
+      - { name: rbenv }
+      - { name: tmux }
+      - { name: vim }
+      - { name: wget }
+      - { name: reattach-to-user-namespace }
+
+  #brew
+  tasks:
+    - name: common | brew update
+      homebrew: update_homebrew=yes
+
+    - name: common | brew install osx.common.packages
+      homebrew: >
+        name={{ item.name }}
+        state={{ item.state | default('latest') }}
+        install_options={{
+          item.install_options | default() | join(',')
+          if item.install_options is not string
+          else item.install_options
+        }}
+      with_items: homebrew_packages
+      register: brew_result
+
+    - name: common | mkdir brew_info
+      file: path=brew_info state=directory
+
+    - name: common | brew info item > brew_info/item
+      shell: brew info {{ item }} > brew_info/{{ item }}
+      with_items: brew_result.results | selectattr('changed') | map(attribute='item') | map(attribute='name') | list
